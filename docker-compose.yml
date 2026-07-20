@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: klendoo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-klendoo}
+      POSTGRES_USER: ${POSTGRES_USER:-klendoo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    volumes:
+      - klendoo-db-data:/var/lib/postgresql/data
+    networks:
+      - klendoo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-klendoo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    container_name: klendoo-web
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      DATABASE_URL: ${DATABASE_URL:-postgresql://klendoo:changeme@db:5432/klendoo}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      ALGORAND_RPC_URL: ${ALGORAND_RPC_URL:-https://mainnet-api.algonode.cloud}
+      ALGORAND_INDEXER_URL: ${ALGORAND_INDEXER_URL:-https://mainnet-idx.algonode.cloud}
+      GOPLAUSIBLE_API_URL: ${GOPLAUSIBLE_API_URL:-https://x402.goplausible.xyz}
+      GOPLAUSIBLE_API_KEY: ${GOPLAUSIBLE_API_KEY}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+    networks:
+      - klendoo-network
+    depends_on:
+      db:
+        condition: service_healthy
+    labels:
+      # Traefik routing for klendoo.com
+      - "traefik.enable=true"
+      - "traefik.http.routers.klendoo.rule=Host(`klendoo.com`,`www.klendoo.com`)"
+      - "traefik.http.routers.klendoo.entrypoints=web,websecure"
+      - "traefik.http.routers.klendoo.tls.certresolver=letsencrypt"
+      - "traefik.http.services.klendoo.loadbalancer.server.port=3000"
+      # Redirect HTTP to HTTPS
+      - "traefik.http.routers.klendoo-http.rule=Host(`klendoo.com`,`www.klendoo.com`)"
+      - "traefik.http.routers.klendoo-http.entrypoints=web"
+      - "traefik.http.routers.klendoo-http.middlewares=redirect-to-https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+volumes:
+  klendoo-db-data:
+    driver: local
+
+networks:
+  klendoo-network:
+    driver: bridge
