@@ -1,35 +1,232 @@
 generator client {
   provider = "prisma-client-js"
+  binaryTargets = ["linux-musl-openssl-3.0.x"]
+
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model HostAccount {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email String @unique
-  slug String @unique
-  displayName String
-  status String @default("active")
-  createdAt DateTime @default(now())
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                  String    @unique
+  slug                   String    @unique
+  displayName            String
+  profileImage           String?
+  password_hash          String?
+
+  googleId               String?   @unique
+  googleAccessToken      String?
+  googleRefreshToken     String?
+  googleCalendarId       String?   @default("primary")
+
+  walletAddress          String?   @db.VarChar(58)
+  balance                Decimal   @default(0) @db.Decimal(10, 2)
+  totalCreditsPurchased  Decimal   @default(0) @db.Decimal(10, 2)
+
+  timezone               String    @default("UTC")
+  workingHoursStart      String    @default("09:00")
+  workingHoursEnd        String    @default("17:00")
+  workingDaysJson        String    @default("[1,2,3,4,5]")
+
+  status                 String    @default("active")
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  clients                ClientAccessRequest[]
+  interactions           ClientInteraction[]
+  actionCosts            ActionCostLog[]
+  creditPurchases        CreditPurchase[]
+  chatSessions           ChatSession[]
+
+  @@index([slug])
+  @@index([email])
   @@map("host_accounts")
 }
 
-model User {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email String @unique
-  role String @default("visitor")
-  createdAt DateTime @default(now())
-  @@map("users")
+model ClientAccessRequest {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostId                 String    @db.Uuid
+  hostAccount            HostAccount @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  clientEmail            String
+  clientName             String?
+  status                 String    @default("pending")
+  interactionLimit       Int       @default(5)
+  interactionUsed        Int       @default(0)
+
+  requestedAt            DateTime  @default(now())
+  approvedAt             DateTime?
+  expiresAt              DateTime?
+
+  chatSession            ChatSession?
+  interactions           ClientInteraction[]
+
+  @@unique([hostId, clientEmail])
+  @@index([hostId])
+  @@index([status])
+  @@map("client_access_requests")
+}
+
+model ClientInteraction {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostId                 String    @db.Uuid
+  hostAccount            HostAccount @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  accessRequestId        String    @db.Uuid
+  accessRequest          ClientAccessRequest @relation(fields: [accessRequestId], references: [id], onDelete: Cascade)
+
+  bookingId              String?   @db.Uuid
+  calendarEventId        String?
+  startTime              DateTime
+  endTime                DateTime
+
+  actionType              String
+  costUSDC                Decimal  @db.Decimal(5, 2)
+  settlementId            String?
+  transactionHash         String?
+
+  status                  String   @default("pending")
+  createdAt               DateTime @default(now())
+
+  @@index([hostId])
+  @@index([accessRequestId])
+  @@map("client_interactions")
+}
+
+model ActionCostLog {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostId                 String    @db.Uuid
+  hostAccount            HostAccount @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  actionType             String
+  costUSDC                Decimal  @db.Decimal(5, 2)
+  clientEmail             String
+  bookingId               String?
+  settlementId            String?
+
+  createdAt               DateTime @default(now())
+
+  @@index([hostId])
+  @@index([createdAt])
+  @@map("action_cost_logs")
+}
+
+model CreditPurchase {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hostId                 String    @db.Uuid
+  hostAccount            HostAccount @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  amount                  Decimal  @db.Decimal(10, 2)
+  credits                 Decimal  @db.Decimal(10, 2)
+  paymentMethod           String
+  transactionId           String?
+  status                  String   @default("completed")
+
+  createdAt               DateTime @default(now())
+
+  @@index([hostId])
+  @@map("credit_purchases")
+}
+
+model ChatSession {
+  id                     String    @id
+  hostId                 String    @db.Uuid
+  hostAccount            HostAccount @relation(fields: [hostId], references: [id], onDelete: Cascade)
+
+  accessRequestId        String    @unique @db.Uuid
+  accessRequest          ClientAccessRequest @relation(fields: [accessRequestId], references: [id], onDelete: Cascade)
+
+  clientEmail             String
+  status                  String   @default("active")
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  messages                ChatMessage[]
+
+  @@index([hostId])
+  @@map("chat_sessions")
+}
+
+model ChatMessage {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sessionId              String
+  session                ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  role                    String
+  message                 String
+
+  createdAt               DateTime @default(now())
+
+  @@index([sessionId])
+  @@map("chat_messages")
 }
 
 model PasswordResetToken {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  email String
-  user_type String
-  token String @unique
-  expires_at DateTime
-  used Boolean @default(false)
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String
+  user_type               String
+  token                   String   @unique
+  expires_at              DateTime
+  used                    Boolean  @default(false)
+  created_at              DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@index([expires_at])
   @@map("password_reset_tokens")
+}
+
+model User {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email                   String   @unique
+  role                    String   @default("visitor")
+  googleId                String?  @unique
+  googleAccessToken       String?
+  googleRefreshToken      String?
+  walletAddress           String?  @db.VarChar(58)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Booking {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  visitorId               String   @db.Uuid
+  hostId                  String   @db.Uuid
+  sessionTypeId            String  @default("standard-session")
+  startTime                DateTime
+  endTime                  DateTime
+  calendarEventId          String?
+  status                   String  @default("pending")
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  @@index([visitorId])
+  @@index([hostId])
+  @@map("bookings")
+}
+
+model Settlement {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  bookingId                String? @db.Uuid
+  hostId                   String  @db.Uuid
+  actionType               String
+  amountUsdc                Decimal @db.Decimal(10, 2)
+  settlementId               String? @unique
+  transactionHash             String?
+  status                      String  @default("pending")
+  confirmed                   Boolean @default(false)
+  idempotencyKey               String? @unique
+  confirmedAt                  DateTime?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  @@index([hostId])
+  @@index([bookingId])
+  @@map("settlements")
 }

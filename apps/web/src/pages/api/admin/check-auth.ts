@@ -1,9 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'klendoo_admin_secret_key';
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const JWT_SECRET = process.env.JWT_SECRET || 'klendoo_admin_secret_key';
   const token = req.headers.authorization?.split('Bearer ')[1] || req.cookies.adminToken;
 
   if (!token) {

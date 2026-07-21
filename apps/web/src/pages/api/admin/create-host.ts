@@ -3,9 +3,8 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'klendoo_admin_secret_key';
-
 function verifyAdmin(token?: string) {
+  const JWT_SECRET = process.env.JWT_SECRET || 'klendoo_admin_secret_key';
   if (!token) throw new Error('No token');
   const decoded = jwt.verify(token, JWT_SECRET) as any;
   if (decoded.role !== 'super_admin') throw new Error('Not admin');
