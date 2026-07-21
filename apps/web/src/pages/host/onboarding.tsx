@@ -8,7 +8,7 @@ interface OnboardingStep {
 
 export default function HostOnboarding() {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [formData, setFormData] = useState({
     email: '',
     displayName: '',
@@ -113,8 +113,7 @@ export default function HostOnboarding() {
       localStorage.setItem('hostId', data.hostId);
       localStorage.setItem('hostSlug', data.slug);
 
-      // Redirect to host dashboard
-      router.push(`/host/dashboard`);
+      setStep(4);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Onboarding failed');
     } finally {
@@ -358,6 +357,21 @@ export default function HostOnboarding() {
                 </button>
               </div>
             </form>
+          </div>
+        )}
+
+        {/* Step 4: Submitted, pending admin approval */}
+        {step === 4 && (
+          <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-3xl">✓</span>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Account Created</h2>
+            <p className="text-gray-600">
+              Thanks, {formData.displayName}. Your account is pending admin approval. You'll be
+              able to access your dashboard at <strong>klendoo.com/{formData.slug}</strong> once
+              it's approved.
+            </p>
           </div>
         )}
       </div>
