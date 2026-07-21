@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 const prisma = new PrismaClient();
 function verifyAdmin(token?: string) {
@@ -54,14 +55,31 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(`[Admin] Created host: ${displayName} (${slug})`);
 
-    // TODO: Send welcome email to host
-    console.log(`[Admin] Email sent to ${email}`);
+    // No email provider is configured yet (SENDGRID_API_KEY is a placeholder), so
+    // generate a setup link immediately and hand it back to the admin to share
+    // manually, instead of silently pretending an email was sent.
+    const setupToken = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h, longer than the self-serve 1h reset window
+    await prisma.passwordResetToken.create({
+      data: {
+        email,
+        user_type: 'host',
+        token: setupToken,
+        expires_at: expiresAt,
+      },
+    });
+
+    const baseUrl = process.env.NEXTAUTH_URL || `https://${req.headers.host}`;
+    const setupLink = `${baseUrl}/reset-password?token=${setupToken}`;
+
+    console.log(`[Admin] Setup link for ${email}: ${setupLink}`);
 
     return res.status(201).json({
       hostId: host.id,
       slug: host.slug,
       email: host.email,
-      message: 'Host account created successfully',
+      setupLink,
+      message: 'Host account created. Share the setup link with them to set their password.',
     });
   } catch (error) {
     console.error('[Admin] Error creating host:', error);

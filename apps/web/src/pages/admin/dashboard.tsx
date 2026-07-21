@@ -36,6 +36,7 @@ export default function AdminDashboard() {
     slug: '',
     timezone: 'UTC',
   });
+  const [setupLink, setSetupLink] = useState('');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -134,13 +135,14 @@ export default function AdminDashboard() {
         body: JSON.stringify(createForm),
       });
 
+      const data = await response.json();
+
       if (response.ok) {
         setCreateForm({ email: '', displayName: '', slug: '', timezone: 'UTC' });
         setError('');
+        setSetupLink(data.setupLink || '');
         fetchData();
-        setActiveTab('overview');
       } else {
-        const data = await response.json();
         setError(data.error);
       }
     } catch (err) {
@@ -372,6 +374,33 @@ export default function AdminDashboard() {
           <div className="bg-gray-800 rounded-lg p-8 border border-gray-700 max-w-2xl">
             <h2 className="text-2xl font-bold mb-6">Manually Create Host Account</h2>
 
+            {setupLink && (
+              <div className="mb-6 p-4 bg-green-900 border border-green-700 rounded-lg">
+                <p className="text-sm text-green-200 font-medium mb-2">
+                  ✓ Host created. Email delivery isn't configured yet — share this link with
+                  them directly so they can set their password:
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    readOnly
+                    value={setupLink}
+                    onClick={(e) => (e.target as HTMLInputElement).select()}
+                    className="flex-1 px-3 py-2 bg-gray-900 border border-gray-600 rounded text-green-300 text-sm font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(setupLink);
+                    }}
+                    className="px-4 py-2 bg-green-700 hover:bg-green-600 rounded text-sm font-medium"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p className="text-xs text-green-400 mt-2">Expires in 24 hours.</p>
+              </div>
+            )}
+
             <form onSubmit={handleCreateHost} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">Email Address</label>
@@ -435,8 +464,8 @@ export default function AdminDashboard() {
                 <ul className="text-sm text-gray-400 mt-2 space-y-1">
                   <li>• Balance: $0 (manual top-up needed)</li>
                   <li>• Status: Active</li>
-                  <li>• Google OAuth: Not connected (they can do this later)</li>
-                  <li>• Email notification sent to host</li>
+                  <li>• Google Calendar: Not connected (they can do this later)</li>
+                  <li>• No email is sent automatically — you'll get a setup link to share yourself</li>
                 </ul>
               </div>
 
