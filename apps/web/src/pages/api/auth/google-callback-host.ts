@@ -4,6 +4,15 @@ import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
 
+const PLACEHOLDER_VALUES = new Set(['your-id', 'your-secret', 'your-key', '']);
+
+async function getSetting(key: string, envKey: string): Promise<string | undefined> {
+  const row = await prisma.platformSetting.findUnique({ where: { key } });
+  if (row?.value) return row.value;
+  const envValue = process.env[envKey];
+  return envValue && !PLACEHOLDER_VALUES.has(envValue) ? envValue : undefined;
+}
+
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -38,18 +47,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.redirect(302, '/host/dashboard-v2?calendar=error&reason=no_code');
   }
 
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const baseUrl = process.env.NEXTAUTH_URL || `https://${req.headers.host}`;
-
   try {
+    const clientId = await getSetting('GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_ID');
+    const clientSecret = await getSetting('GOOGLE_CLIENT_SECRET', 'GOOGLE_CLIENT_SECRET');
+    const baseUrl = process.env.NEXTAUTH_URL || `https://${req.headers.host}`;
+
+    if (!clientId || !clientSecret) {
+      return res.redirect(302, '/host/dashboard-v2?calendar=error&reason=not_configured');
+    }
+
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         code,
-        client_id: clientId || '',
-        client_secret: clientSecret || '',
+        client_id: clientId,
+        client_secret: clientSecret,
         redirect_uri: `${baseUrl}/api/auth/google-callback-host`,
         grant_type: 'authorization_code',
       }),
