@@ -38,12 +38,17 @@ export default function HostDashboardV2() {
       try {
         const hostSlug = localStorage.getItem('hostSlug');
         if (!hostSlug) {
-          router.push('/host/onboarding');
+          router.push('/host/login');
           return;
         }
 
         // Fetch host data
         const hostResponse = await fetch('/api/host/dashboard');
+        if (hostResponse.status === 401) {
+          localStorage.removeItem('hostSlug');
+          router.push('/host/login');
+          return;
+        }
         if (hostResponse.ok) {
           const data = await hostResponse.json();
           setHostData(data);
