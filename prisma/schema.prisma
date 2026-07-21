@@ -230,3 +230,24 @@ model Settlement {
   @@index([bookingId])
   @@map("settlements")
 }
+
+model PlatformSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model HostSignupToken {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email      String
+  token      String   @unique
+  expires_at DateTime
+  used       Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  @@index([email])
+  @@index([token])
+  @@map("host_signup_tokens")
+}

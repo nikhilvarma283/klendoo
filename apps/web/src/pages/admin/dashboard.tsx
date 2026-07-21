@@ -37,6 +37,7 @@ export default function AdminDashboard() {
     timezone: 'UTC',
   });
   const [setupLink, setSetupLink] = useState('');
+  const [setupEmailed, setSetupEmailed] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -141,6 +142,7 @@ export default function AdminDashboard() {
         setCreateForm({ email: '', displayName: '', slug: '', timezone: 'UTC' });
         setError('');
         setSetupLink(data.setupLink || '');
+        setSetupEmailed(!!data.emailed);
         fetchData();
       } else {
         setError(data.error);
@@ -189,15 +191,23 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold">🔐 Klendoo Admin</h1>
             <p className="text-red-200 text-sm">Super Admin Panel</p>
           </div>
-          <button
-            onClick={() => {
-              localStorage.removeItem('adminToken');
-              router.push('/admin/login');
-            }}
-            className="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg transition text-sm"
-          >
-            Sign Out
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => router.push('/admin/settings')}
+              className="px-4 py-2 bg-red-800 hover:bg-red-700 rounded-lg transition text-sm border border-red-700"
+            >
+              Settings
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem('adminToken');
+                router.push('/admin/login');
+              }}
+              className="px-4 py-2 bg-red-700 hover:bg-red-600 rounded-lg transition text-sm"
+            >
+              Sign Out
+            </button>
+          </div>
         </div>
       </div>
 
@@ -377,8 +387,9 @@ export default function AdminDashboard() {
             {setupLink && (
               <div className="mb-6 p-4 bg-green-900 border border-green-700 rounded-lg">
                 <p className="text-sm text-green-200 font-medium mb-2">
-                  ✓ Host created. Email delivery isn't configured yet — share this link with
-                  them directly so they can set their password:
+                  {setupEmailed
+                    ? '✓ Host created and a setup email was sent to them. You can also share this link directly:'
+                    : "✓ Host created. Email delivery isn't configured yet — share this link with them directly so they can set their password:"}
                 </p>
                 <div className="flex gap-2">
                   <input

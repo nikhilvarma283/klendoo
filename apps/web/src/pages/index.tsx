@@ -47,12 +47,6 @@ export default function Home() {
             >
               Create your page
             </button>
-            <button
-              onClick={() => router.push('/admin/login')}
-              className="px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-white transition"
-            >
-              Admin login
-            </button>
           </div>
         </div>
       </section>
