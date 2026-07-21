@@ -37,6 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       slug: host.slug,
       balance: parseFloat(host.balance.toString()),
       totalCreditsPurchased: parseFloat(host.totalCreditsPurchased.toString()),
+      googleConnected: !!host.googleAccessToken,
     });
   } catch (error) {
     console.error('[Host] Dashboard fetch error:', error);

@@ -67,22 +67,6 @@ export default function HostOnboarding() {
     setStep(2);
   };
 
-  const handleGoogleOAuth = async () => {
-    setLoading(true);
-    try {
-      const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-      const redirectUri = `${window.location.origin}/auth/google-callback-host`;
-      const scope = 'openid email profile https://www.googleapis.com/auth/calendar';
-
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${encodeURIComponent(scope)}`;
-
-      window.location.href = authUrl;
-    } catch (err) {
-      setError('Failed to initiate Google OAuth');
-      setLoading(false);
-    }
-  };
-
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     // Assume OAuth was completed, move to step 3
@@ -240,26 +224,12 @@ export default function HostOnboarding() {
               </ul>
             </div>
 
+            <p className="text-sm text-gray-500 mb-6">
+              You'll connect your calendar from your dashboard once your account is approved —
+              for now, let's finish setting up your page.
+            </p>
+
             <form onSubmit={handleStep2Submit} className="space-y-4">
-              <button
-                type="button"
-                onClick={handleGoogleOAuth}
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-3 px-4 py-3 border-2 border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 transition font-medium disabled:opacity-50"
-              >
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
-                  <path
-                    fill="currentColor"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                </svg>
-                {loading ? 'Connecting...' : 'Connect with Google'}
-              </button>
-
-              <p className="text-sm text-gray-500 text-center">
-                We'll request access to your calendar and profile. You can revoke access anytime.
-              </p>
-
               <div className="flex gap-3 mt-6">
                 <button
                   type="button"

@@ -6,6 +6,7 @@ interface HostData {
   slug: string;
   balance: number;
   totalCreditsPurchased: number;
+  googleConnected: boolean;
 }
 
 interface ClientRequest {
@@ -32,6 +33,28 @@ export default function HostDashboardV2() {
   const [actionCosts, setActionCosts] = useState<ActionCost[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'clients' | 'analytics' | 'balance'>('overview');
+  const [calendarNotice, setCalendarNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  useEffect(() => {
+    if (!router.isReady) return;
+    const { calendar, reason } = router.query;
+    if (calendar === 'connected') {
+      setCalendarNotice({ type: 'success', text: 'Google Calendar connected successfully.' });
+      router.replace('/host/dashboard-v2', undefined, { shallow: true });
+    } else if (calendar === 'error') {
+      const messages: Record<string, string> = {
+        not_configured: 'Google Calendar integration is not configured yet.',
+        denied: 'You declined Google Calendar access.',
+        state_mismatch: 'Security check failed. Please try connecting again.',
+        token_exchange_failed: 'Google rejected the connection request. Please try again.',
+      };
+      setCalendarNotice({
+        type: 'error',
+        text: messages[reason as string] || 'Failed to connect Google Calendar.',
+      });
+      router.replace('/host/dashboard-v2', undefined, { shallow: true });
+    }
+  }, [router.isReady, router.query]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -120,17 +143,53 @@ export default function HostDashboardV2() {
             <h1 className="text-2xl font-bold text-gray-900">{hostData.displayName}</h1>
             <p className="text-sm text-gray-600">klendoo.com/{hostData.slug}</p>
           </div>
-          <button
-            onClick={() => router.push(`/${hostData.slug}`)}
-            className="px-4 py-2 text-sm text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 transition"
-          >
-            → View Public Page
-          </button>
+          <div className="flex items-center gap-3">
+            {hostData.googleConnected && (
+              <span className="text-xs font-medium text-green-700 bg-green-100 px-3 py-1.5 rounded-full">
+                ✓ Calendar connected
+              </span>
+            )}
+            <button
+              onClick={() => router.push(`/${hostData.slug}`)}
+              className="px-4 py-2 text-sm text-indigo-600 border border-indigo-300 rounded-lg hover:bg-indigo-50 transition"
+            >
+              → View Public Page
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="max-w-6xl mx-auto px-6 py-6">
+        {calendarNotice && (
+          <div
+            className={`mb-6 p-4 rounded-lg text-sm ${
+              calendarNotice.type === 'success'
+                ? 'bg-green-100 text-green-800 border border-green-200'
+                : 'bg-red-100 text-red-800 border border-red-200'
+            }`}
+          >
+            {calendarNotice.text}
+          </div>
+        )}
+
+        {!hostData.googleConnected && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium text-amber-900">Google Calendar not connected</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Connect your calendar so client bookings sync automatically.
+              </p>
+            </div>
+            <a
+              href="/api/auth/google-connect"
+              className="shrink-0 px-4 py-2 bg-white border border-amber-300 text-amber-900 text-sm font-medium rounded-lg hover:bg-amber-100 transition"
+            >
+              Connect Google Calendar
+            </a>
+          </div>
+        )}
+
         <div className="flex gap-2 mb-8">
           {(['overview', 'clients', 'analytics', 'balance'] as const).map((tab) => (
             <button
