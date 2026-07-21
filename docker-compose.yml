@@ -1,6 +1,21 @@
 version: '3.8'
 
 services:
+  traefik:
+    image: traefik:v2.10
+    container_name: klendoo-traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./traefik/traefik.yml:/traefik.yml
+      - ./traefik/config:/etc/traefik
+      - ./letsencrypt:/letsencrypt
+    networks:
+      - klendoo-network
+
   db:
     image: postgres:16-alpine
     container_name: klendoo-db
@@ -41,23 +56,20 @@ services:
       GOPLAUSIBLE_API_URL: ${GOPLAUSIBLE_API_URL:-https://x402.goplausible.xyz}
       GOPLAUSIBLE_API_KEY: ${GOPLAUSIBLE_API_KEY}
       SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-nikhil@decentralthink.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
     networks:
       - klendoo-network
     depends_on:
       db:
         condition: service_healthy
     labels:
-      # Traefik routing for klendoo.com
       - "traefik.enable=true"
       - "traefik.http.routers.klendoo.rule=Host(`klendoo.com`,`www.klendoo.com`)"
       - "traefik.http.routers.klendoo.entrypoints=web,websecure"
       - "traefik.http.routers.klendoo.tls.certresolver=letsencrypt"
       - "traefik.http.services.klendoo.loadbalancer.server.port=3000"
-      # Redirect HTTP to HTTPS
-      - "traefik.http.routers.klendoo-http.rule=Host(`klendoo.com`,`www.klendoo.com`)"
-      - "traefik.http.routers.klendoo-http.entrypoints=web"
-      - "traefik.http.routers.klendoo-http.middlewares=redirect-to-https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
 
 volumes:
   klendoo-db-data:

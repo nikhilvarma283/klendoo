@@ -4,135 +4,32 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
-// User (host who offers sessions)
+model HostAccount {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email String @unique
+  slug String @unique
+  displayName String
+  status String @default("active")
+  createdAt DateTime @default(now())
+  @@map("host_accounts")
+}
+
 model User {
-  id                    String     @id @default(cuid())
-  email                 String     @unique
-  name                  String?
-  walletAddress         String?    @unique // Algorand wallet for receiving settlements
-  googleCalendarId      String?
-  googleAccessToken     String?    @db.Text
-  googleRefreshToken    String?    @db.Text
-  profilePhoto          String?
-  bio                   String?    @db.Text
-  timezone              String     @default("UTC")
-  isVerified            Boolean    @default(false)
-
-  // Booking page customization
-  bookingPageSlug       String?    @unique
-  bookingPageTitle      String?
-  bookingPageColor      String     @default("#3b82f6")
-
-  // Settings
-  clendooFeePercent     Int        @default(10) // Klendoo takes 10% of paid sessions
-
-  // Relations
-  bookings              Booking[]
-  sessionTypes          SessionType[]
-  settlements           Settlement[]
-
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email String @unique
+  role String @default("visitor")
+  createdAt DateTime @default(now())
+  @@map("users")
 }
 
-// Session type (e.g., "1:1 consultation", "group workshop")
-model SessionType {
-  id                    String     @id @default(cuid())
-  userId                String
-  user                  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  name                  String     // e.g., "1:1 Free Consultation"
-  durationMinutes       Int        @default(30)
-  isPaid                Boolean    @default(false)
-  priceUSDC             Decimal    @default(0) @db.Decimal(10, 2) // Only if isPaid=true
-  description           String?    @db.Text
-
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
-
-  @@unique([userId, name])
-}
-
-// Booking (visitor reserves a time slot)
-model Booking {
-  id                    String     @id @default(cuid())
-  userId                String     // Host
-  user                  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  visitorName           String
-  visitorEmail          String
-  sessionTypeId         String
-
-  startTime             DateTime
-  endTime               DateTime
-
-  googleEventId         String?    // Google Calendar event ID
-  confirmationEmailSent Boolean    @default(false)
-
-  status                String     @default("confirmed") // confirmed, cancelled, rescheduled
-
-  // Payment (for paid sessions)
-  visitorWalletAddress  String?    // Visitor's wallet (if they paid)
-  pricePaidUSDC         Decimal    @default(0) @db.Decimal(10, 2)
-
-  // Settlements
-  bookingSettlementId   String?    // Settlement for Klendoo/host
-  bookingSettlement     Settlement? @relation("BookingSettlement", fields: [bookingSettlementId], references: [id])
-
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
-
-  @@index([userId])
-  @@index([visitorEmail])
-}
-
-// Settlement (micropayment on Algorand)
-model Settlement {
-  id                    String     @id @default(cuid())
-  hostId                String
-  host                  User       @relation(fields: [hostId], references: [id], onDelete: Cascade)
-
-  actionType            String     // "booking", "follow-up", "reminder"
-  amountUSDC            Decimal    @db.Decimal(10, 2)
-
-  // Algorand transaction
-  txnHash               String?    @unique // Transaction hash on Algorand Mainnet
-  confirmed             Boolean    @default(false)
-  confirmationTime      DateTime?
-
-  // Related booking (optional)
-  bookingId             String?
-  booking               Booking?   @relation("BookingSettlement")
-
-  // Measurement window flag (for Algorand competition tracking)
-  measurementWindow     Boolean    @default(false)
-
-  failureReason         String?    // If settlement failed
-
-  createdAt             DateTime   @default(now())
-  updatedAt             DateTime   @updatedAt
-
-  @@index([hostId])
-  @@index([confirmed])
-  @@index([measurementWindow])
-}
-
-// Chat message (for conversation history)
-model ChatMessage {
-  id                    String     @id @default(cuid())
-  sessionId             String     // Chat session ID
-
-  role                  String     // "user", "assistant"
-  content               String     @db.Text
-
-  // For user messages
-  userEmail             String?
-
-  createdAt             DateTime   @default(now())
-
-  @@index([sessionId])
-  @@index([userEmail])
+model PasswordResetToken {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email String
+  user_type String
+  token String @unique
+  expires_at DateTime
+  used Boolean @default(false)
+  @@map("password_reset_tokens")
 }

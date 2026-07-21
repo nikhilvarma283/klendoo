@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "description": "Micropayment-driven scheduling platform on Algorand x402",
   "private": true,
+  "packageManager": "npm@10.0.0",
   "workspaces": [
     "packages/*",
     "services/*",
@@ -11,6 +12,7 @@
   "scripts": {
     "dev": "turbo run dev --parallel",
     "build": "turbo run build",
+    "start": "turbo run start --filter=web",
     "test": "turbo run test",
     "type-check": "turbo run type-check",
     "lint": "turbo run lint",
@@ -19,6 +21,7 @@
     "clean": "turbo clean && rm -rf node_modules"
   },
   "devDependencies": {
+    "prisma": "^7.9.0",
     "turbo": "^2.0.0",
     "typescript": "^5.3.3"
   },
