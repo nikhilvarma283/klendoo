@@ -19,6 +19,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       { expiresIn: '24h' }
     );
 
+    const maxAge = 60 * 60 * 24;
+    res.setHeader(
+      'Set-Cookie',
+      `adminToken=${token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${maxAge}`
+    );
+
     console.log(`[Admin] Login successful: ${email}`);
 
     return res.status(200).json({ token, email });

@@ -12,7 +12,7 @@ function verifyAdmin(token?: string) {
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const token = req.headers.authorization?.split('Bearer ')[1];
+  const token = req.headers.authorization?.split('Bearer ')[1] || req.cookies.adminToken;
 
   try {
     verifyAdmin(token);
