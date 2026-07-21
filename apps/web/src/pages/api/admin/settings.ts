@@ -12,11 +12,28 @@ function verifyAdmin(token?: string) {
   return decoded;
 }
 
-const SETTINGS: Record<string, { secret: boolean; envFallback: string; label: string; group: string }> = {
+const SETTINGS: Record<
+  string,
+  { secret: boolean; envFallback: string; label: string; group: string; options?: string[]; default?: string }
+> = {
   GOOGLE_CLIENT_ID: { secret: false, envFallback: 'GOOGLE_CLIENT_ID', label: 'Google Client ID', group: 'Google Calendar' },
   GOOGLE_CLIENT_SECRET: { secret: true, envFallback: 'GOOGLE_CLIENT_SECRET', label: 'Google Client Secret', group: 'Google Calendar' },
   SENDGRID_API_KEY: { secret: true, envFallback: 'SENDGRID_API_KEY', label: 'SendGrid API Key', group: 'Email (SendGrid)' },
   SENDGRID_FROM_EMAIL: { secret: false, envFallback: 'SENDGRID_FROM_EMAIL', label: 'From Email Address', group: 'Email (SendGrid)' },
+  ALGORAND_WALLET_ADDRESS: {
+    secret: false,
+    envFallback: 'ALGORAND_WALLET_ADDRESS',
+    label: 'Payout Wallet Address',
+    group: 'x402 Payments (Algorand)',
+  },
+  ALGORAND_NETWORK: {
+    secret: false,
+    envFallback: 'ALGORAND_NETWORK',
+    label: 'Network',
+    group: 'x402 Payments (Algorand)',
+    options: ['testnet', 'mainnet'],
+    default: 'testnet',
+  },
 };
 
 const PLACEHOLDER_VALUES = new Set(['your-id', 'your-secret', 'your-key', '']);
@@ -38,15 +55,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       const settings = Object.entries(SETTINGS).map(([key, meta]) => {
         const dbValue = dbValues.get(key);
         const envValue = process.env[meta.envFallback];
-        const effectiveValue = dbValue || (envValue && !PLACEHOLDER_VALUES.has(envValue) ? envValue : undefined);
+        const effectiveValue =
+          dbValue || (envValue && !PLACEHOLDER_VALUES.has(envValue) ? envValue : undefined) || meta.default;
 
         return {
           key,
           label: meta.label,
           group: meta.group,
           secret: meta.secret,
+          options: meta.options,
           configured: !!effectiveValue,
-          source: dbValue ? 'database' : effectiveValue ? 'environment' : 'unset',
+          source: dbValue ? 'database' : envValue && !PLACEHOLDER_VALUES.has(envValue) ? 'environment' : meta.default ? 'default' : 'unset',
           preview: effectiveValue
             ? meta.secret
               ? `••••••${effectiveValue.slice(-4)}`
@@ -73,6 +92,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     try {
       const keys = Object.keys(updates).filter((k) => k in SETTINGS && updates[k]?.trim());
+
+      for (const key of keys) {
+        const meta = SETTINGS[key];
+        const value = updates[key].trim();
+        if (meta.options && !meta.options.includes(value)) {
+          return res.status(400).json({ error: `Invalid value for ${meta.label}` });
+        }
+        if (key === 'ALGORAND_WALLET_ADDRESS' && !/^[A-Z2-7]{58}$/.test(value)) {
+          return res.status(400).json({ error: 'Not a valid Algorand address (must be 58 base32 characters)' });
+        }
+      }
 
       await Promise.all(
         keys.map((key) =>

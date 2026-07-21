@@ -6,8 +6,9 @@ interface Setting {
   label: string;
   group: string;
   secret: boolean;
+  options?: string[];
   configured: boolean;
-  source: 'database' | 'environment' | 'unset';
+  source: 'database' | 'environment' | 'default' | 'unset';
   preview: string;
 }
 
@@ -134,19 +135,34 @@ export default function AdminSettings() {
                         {setting.label}
                         {setting.configured ? (
                           <span className="ml-2 text-xs text-green-400">
-                            ✓ configured ({setting.source}) — {setting.preview}
+                            ✓ {setting.source === 'default' ? 'default' : 'configured'} ({setting.source}) — {setting.preview}
                           </span>
                         ) : (
                           <span className="ml-2 text-xs text-yellow-500">not set</span>
                         )}
                       </label>
-                      <input
-                        type={setting.secret ? 'password' : 'text'}
-                        value={inputs[setting.key] || ''}
-                        onChange={(e) => setInputs({ ...inputs, [setting.key]: e.target.value })}
-                        placeholder={setting.configured ? 'Leave blank to keep current value' : `Enter ${setting.label.toLowerCase()}`}
-                        className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600"
-                      />
+                      {setting.options ? (
+                        <select
+                          value={inputs[setting.key] || ''}
+                          onChange={(e) => setInputs({ ...inputs, [setting.key]: e.target.value })}
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-red-600"
+                        >
+                          <option value="">— leave unchanged —</option>
+                          {setting.options.map((opt) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type={setting.secret ? 'password' : 'text'}
+                          value={inputs[setting.key] || ''}
+                          onChange={(e) => setInputs({ ...inputs, [setting.key]: e.target.value })}
+                          placeholder={setting.configured ? 'Leave blank to keep current value' : `Enter ${setting.label.toLowerCase()}`}
+                          className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-red-600"
+                        />
+                      )}
                     </div>
                   ))}
               </div>
@@ -169,9 +185,14 @@ export default function AdminSettings() {
             Add <code className="text-indigo-400">https://klendoo.com/api/auth/google-callback-host</code> as an
             authorized redirect URI.
           </p>
-          <p>
+          <p className="mb-1">
             <strong>SendGrid:</strong> SendGrid dashboard → Settings → API Keys. The from-email
             must be a verified sender in your SendGrid account.
+          </p>
+          <p>
+            <strong>Payout Wallet:</strong> The single Algorand address that receives all x402
+            settlements from booking/follow-up/reminder agents. Create it in a wallet app (Pera,
+            Defly) — never share the private key/mnemonic, only the 58-character public address.
           </p>
         </div>
       </div>
